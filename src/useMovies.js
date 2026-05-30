@@ -9,8 +9,6 @@ export function useMovies(query) {
 
   useEffect(
     function () {
-      // callback?.();
-
       const controller = new AbortController();
 
       async function fetchMovies() {
@@ -23,8 +21,9 @@ export function useMovies(query) {
             { signal: controller.signal }
           );
 
-          if (!res.ok)
-            throw new Error("Something went wrong with fetching movies");
+          if (!res.ok) {
+            throw new Error("Something went wrong while fetching movies");
+          }
 
           const data = await res.json();
           if (data.Response === "False") throw new Error("Movie not found");
@@ -33,7 +32,7 @@ export function useMovies(query) {
           setError("");
         } catch (err) {
           if (err.name !== "AbortError") {
-            console.log(err.message);
+            setMovies([]);
             setError(err.message);
           }
         } finally {
@@ -44,6 +43,12 @@ export function useMovies(query) {
       if (query.length < 3) {
         setMovies([]);
         setError("");
+        return;
+      }
+
+      if (!KEY) {
+        setMovies([]);
+        setError("Add REACT_APP_OMDB_API_KEY in Vercel or .env to enable movie search.");
         return;
       }
 

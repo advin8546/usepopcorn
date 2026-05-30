@@ -5,7 +5,7 @@ import { useLocalStorageState } from "./useLocalStorageState";
 import { useMovies } from "./useMovies";
 
 const average = (arr) =>
-  arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
+  arr.length ? arr.reduce((acc, cur) => acc + cur, 0) / arr.length : 0;
 
 const KEY = process.env.REACT_APP_OMDB_API_KEY;
 
@@ -39,9 +39,10 @@ export default function App() {
         <NumResults movies={movies} />
       </NavBar>
 
+      <ProjectHero watched={watched} />
+
       <Main>
         <Box>
-          {/* {isLoading ? <Loader /> : <MovieList movies={movies} />} */}
           {isLoading && <Loader />}
           {!isLoading && !error && (
             <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
@@ -72,6 +73,38 @@ export default function App() {
   );
 }
 
+function ProjectHero({ watched }) {
+  const totalRuntime = watched.reduce((sum, movie) => sum + movie.runtime, 0);
+
+  return (
+    <section className="project-hero" aria-labelledby="project-title">
+      <div>
+        <p className="eyebrow">Recruiter quick view</p>
+        <h2 id="project-title">Movie search, rating, and watchlist workflow</h2>
+        <p>
+          usePopcorn demonstrates API-driven search, custom hooks, keyboard
+          shortcuts, localStorage persistence, loading and error states, and a
+          reusable rating component.
+        </p>
+      </div>
+      <div className="hero-stats" aria-label="Watchlist summary">
+        <span>
+          <strong>{watched.length}</strong>
+          Saved titles
+        </span>
+        <span>
+          <strong>{totalRuntime}</strong>
+          Watch minutes
+        </span>
+        <span>
+          <strong>{KEY ? "Live" : "Config"}</strong>
+          OMDb API
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function Loader() {
   return <p className="loader">Loading...</p>;
 }
@@ -79,7 +112,7 @@ function Loader() {
 function ErrorMessage({ message }) {
   return (
     <p className="error">
-      <span>⛔️</span> {message}
+      <span>!</span> {message}
     </p>
   );
 }
@@ -96,7 +129,9 @@ function NavBar({ children }) {
 function Logo() {
   return (
     <div className="logo">
-      <span role="img">🍿</span>
+      <span role="img" aria-label="Popcorn">
+        🍿
+      </span>
       <h1>usePopcorn</h1>
     </div>
   );
@@ -115,7 +150,7 @@ function Search({ query, setQuery }) {
     <input
       className="search"
       type="text"
-      placeholder="Search movies..."
+      placeholder="Search movies by title..."
       value={query}
       onChange={(e) => setQuery(e.target.value)}
       ref={inputEl}
@@ -149,35 +184,18 @@ function Box({ children }) {
   );
 }
 
-/*
-function WatchedBox() {
-  const [watched, setWatched] = useState(tempWatchedData);
-  const [isOpen2, setIsOpen2] = useState(true);
-
-  return (
-    <div className="box">
-      <button
-        className="btn-toggle"
-        onClick={() => setIsOpen2((open) => !open)}
-      >
-        {isOpen2 ? "–" : "+"}
-      </button>
-
-      {isOpen2 && (
-        <>
-          <WatchedSummary watched={watched} />
-          <WatchedMoviesList watched={watched} />
-        </>
-      )}
-    </div>
-  );
-}
-*/
-
 function MovieList({ movies, onSelectMovie }) {
+  if (!movies.length) {
+    return (
+      <p className="empty-state">
+        Search at least 3 characters to compare movies and build a watchlist.
+      </p>
+    );
+  }
+
   return (
     <ul className="list list-movies">
-      {movies?.map((movie) => (
+      {movies.map((movie) => (
         <Movie movie={movie} key={movie.imdbID} onSelectMovie={onSelectMovie} />
       ))}
     </ul>
@@ -191,7 +209,7 @@ function Movie({ movie, onSelectMovie }) {
       <h3>{movie.Title}</h3>
       <div>
         <p>
-          <span>🗓</span>
+          <span>Year</span>
           <span>{movie.Year}</span>
         </p>
       </div>
@@ -231,40 +249,20 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     Genre: genre,
   } = movie;
 
-  // if (imdbRating > 8) return <p>Greatest ever!</p>;
-  // if (imdbRating > 8) [isTop, setIsTop] = useState(true);
-
-  // const [isTop, setIsTop] = useState(imdbRating > 8);
-  // console.log(isTop);
-  // useEffect(
-  //   function () {
-  //     setIsTop(imdbRating > 8);
-  //   },
-  //   [imdbRating]
-  // );
-
-  const isTop = imdbRating > 8;
-  console.log(isTop);
-
-  // const [avgRating, setAvgRating] = useState(0);
-
   function handleAdd() {
     const newWatchedMovie = {
       imdbID: selectedId,
       title,
       year,
       poster,
-      imdbRating: Number(imdbRating),
-      runtime: Number(runtime.split(" ").at(0)),
+      imdbRating: Number(imdbRating) || 0,
+      runtime: parseInt(runtime, 10) || 0,
       userRating,
       countRatingDecisions: countRef.current,
     };
 
     onAddWatched(newWatchedMovie);
     onCloseMovie();
-
-    // setAvgRating(Number(imdbRating));
-    // setAvgRating((avgRating) => (avgRating + userRating) / 2);
   }
 
   useKey("Escape", onCloseMovie);
@@ -292,7 +290,6 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
 
       return function () {
         document.title = "usePopcorn";
-        // console.log(`Clean up effect for movie ${title}`);
       };
     },
     [title]
@@ -308,7 +305,7 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
             <button className="btn-back" onClick={onCloseMovie}>
               &larr;
             </button>
-            <img src={poster} alt={`Poster of ${movie} movie`} />
+            <img src={poster} alt={`Poster of ${title}`} />
             <div className="details-overview">
               <h2>{title}</h2>
               <p>
@@ -316,13 +313,11 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
               </p>
               <p>{genre}</p>
               <p>
-                <span>⭐️</span>
-                {imdbRating} IMDb rating
+                <span>IMDb</span>
+                {imdbRating} rating
               </p>
             </div>
           </header>
-
-          {/* <p>{avgRating}</p> */}
 
           <section>
             <div className="rating">
@@ -335,14 +330,12 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
                   />
                   {userRating > 0 && (
                     <button className="btn-add" onClick={handleAdd}>
-                      + Add to list
+                      Add to watchlist
                     </button>
                   )}
                 </>
               ) : (
-                <p>
-                  You rated with movie {watchedUserRating} <span>⭐️</span>
-                </p>
+                <p>You rated this movie {watchedUserRating} out of 10.</p>
               )}
             </div>
             <p>
@@ -364,23 +357,23 @@ function WatchedSummary({ watched }) {
 
   return (
     <div className="summary">
-      <h2>Movies you watched</h2>
+      <h2>Watchlist analytics</h2>
       <div>
         <p>
-          <span>#️⃣</span>
-          <span>{watched.length} movies</span>
+          <span>Titles</span>
+          <span>{watched.length}</span>
         </p>
         <p>
-          <span>⭐️</span>
-          <span>{avgImdbRating.toFixed(2)}</span>
+          <span>IMDb</span>
+          <span>{avgImdbRating.toFixed(1)}</span>
         </p>
         <p>
-          <span>🌟</span>
-          <span>{avgUserRating.toFixed(2)}</span>
+          <span>Your avg</span>
+          <span>{avgUserRating.toFixed(1)}</span>
         </p>
         <p>
-          <span>⏳</span>
-          <span>{avgRuntime} min</span>
+          <span>Runtime</span>
+          <span>{Math.round(avgRuntime)} min</span>
         </p>
       </div>
     </div>
@@ -388,6 +381,10 @@ function WatchedSummary({ watched }) {
 }
 
 function WatchedMoviesList({ watched, onDeleteWatched }) {
+  if (!watched.length) {
+    return <p className="empty-state">Rated movies will appear here.</p>;
+  }
+
   return (
     <ul className="list">
       {watched.map((movie) => (
@@ -408,15 +405,15 @@ function WatchedMovie({ movie, onDeleteWatched }) {
       <h3>{movie.title}</h3>
       <div>
         <p>
-          <span>⭐️</span>
+          <span>IMDb</span>
           <span>{movie.imdbRating}</span>
         </p>
         <p>
-          <span>🌟</span>
+          <span>You</span>
           <span>{movie.userRating}</span>
         </p>
         <p>
-          <span>⏳</span>
+          <span>Runtime</span>
           <span>{movie.runtime} min</span>
         </p>
 
